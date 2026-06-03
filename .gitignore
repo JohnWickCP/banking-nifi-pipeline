@@ -1,0 +1,45 @@
+# ===== AI ASSISTANT FILES (không commit) =====
+CLAUDE.md
+MASTER_SPEC.md
+*.docx
+
+# ===== OUTPUT DATA (generated — không commit) =====
+output/
+
+# ===== ENVIRONMENT (secrets) =====
+.env
+!.env.example
+
+# ===== PYTHON =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+*.egg
+.pytest_cache/
+
+# ===== JUPYTER =====
+.ipynb_checkpoints/
+*.ipynb
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== EDITOR =====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===== DOCKER =====
+docker/nifi/conf/flow.xml.gz
+docker/nifi/conf/nifi.properties
+
+# ===== LOGS =====
+*.log
+logs/
