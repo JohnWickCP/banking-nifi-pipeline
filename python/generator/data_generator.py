@@ -20,7 +20,7 @@ except ImportError as e:
 
 CONFIG = {
     "total_transactions": 50_000,   # tổng txn / ngày
-    "fraud_rate": 0.02,             # 2% fraud (sát thực tế ngân hàng VN)
+    "fraud_rate": 0.035,            # IEEE-CIS actual: 3.50% (590k rows, 20,663 fraud)
     "num_customers": 5_000,         # số khách hàng unique
     "num_merchants": 500,           # số merchant
     "simulation_days": 1,           # số ngày simulate
@@ -37,11 +37,12 @@ HOURLY_WEIGHT = {
 }
 
 # Distribution theo kênh
+# fraud_weight: IEEE-CIS ProductCD=C (cash-out/ATM) = 11.69%, W (web) = 2.04%
 CHANNEL_CONFIG = {
-    "ATM":      {"weight": 0.25, "format": "csv",  "avg_amount": 2_000_000,  "std": 1_500_000},
-    "POS":      {"weight": 0.35, "format": "csv",  "avg_amount": 500_000,    "std": 800_000},
-    "mobile":   {"weight": 0.30, "format": "json", "avg_amount": 1_200_000,  "std": 2_000_000},
-    "internet": {"weight": 0.10, "format": "json", "avg_amount": 5_000_000,  "std": 8_000_000},
+    "ATM":      {"weight": 0.25, "format": "csv",  "avg_amount": 2_000_000,  "std": 1_500_000, "fraud_weight": 0.40},
+    "POS":      {"weight": 0.35, "format": "csv",  "avg_amount": 500_000,    "std": 800_000,   "fraud_weight": 0.30},
+    "mobile":   {"weight": 0.30, "format": "json", "avg_amount": 1_200_000,  "std": 2_000_000, "fraud_weight": 0.20},
+    "internet": {"weight": 0.10, "format": "json", "avg_amount": 5_000_000,  "std": 8_000_000, "fraud_weight": 0.10},
 }
 
 # Tỉnh thành VN với tọa độ (để tính geo-anomaly)
@@ -321,16 +322,20 @@ def generate_dataset(config: dict = CONFIG) -> dict[str, pd.DataFrame]:
         all_records.append(rec)
 
     # ── Inject fraud patterns ──
-    print(f"Injecting {n_fraud:,} fraud records ({config['fraud_rate']*100:.0f}%)...")
+    print(f"Injecting {n_fraud:,} fraud records ({config['fraud_rate']*100:.1f}%)...")
     fraud_types = ["velocity", "geo_anomaly", "off_hours_large", "duplicate"]
-    fraud_weights = [0.30, 0.30, 0.25, 0.15]
+    # IEEE-CIS: velocity up (ATM cash-out 11.69%), off_hours_large up (5h-9h = 7-10.6% fraud rate)
+    fraud_weights = [0.35, 0.25, 0.28, 0.12]
+
+    # Fraud injection prefers ATM (40%) based on IEEE ProductCD=C pattern
+    fraud_ch_weights = [CHANNEL_CONFIG[c]["fraud_weight"] for c in channels]
 
     injected = 0
     with tqdm(total=n_fraud) as pbar:
         while injected < n_fraud:
             fraud_type = random.choices(fraud_types, weights=fraud_weights)[0]
             ts       = random.choice(timestamps)
-            channel  = random.choices(channels, weights=ch_weights)[0]
+            channel  = random.choices(channels, weights=fraud_ch_weights)[0]
             cfg      = CHANNEL_CONFIG[channel]
             customer = random.choice(customers)
             merchant = random.choice(merchants)
@@ -362,9 +367,9 @@ def generate_dataset(config: dict = CONFIG) -> dict[str, pd.DataFrame]:
         path = f"{config['output_dir']}/txn_{ch.lower()}.csv"
         ch_df.to_csv(path, index=False)
         results[ch] = ch_df
-        print(f"  {ch}: {len(ch_df):,} records → {path}")
+        print(f"  {ch}: {len(ch_df):,} records -> {path}")
 
-    # Mobile + Internet → JSON (giả lập REST API / webhook payload)
+    # Mobile + Internet -> JSON (REST API / webhook payload)
     for ch in ["mobile", "internet"]:
         ch_df = df[df["channel"] == ch].copy()
         records_json = ch_df.to_dict(orient="records")
@@ -373,7 +378,7 @@ def generate_dataset(config: dict = CONFIG) -> dict[str, pd.DataFrame]:
             json.dump(records_json, f, ensure_ascii=False, indent=2,
                       default=str)
         results[ch] = ch_df
-        print(f"  {ch}: {len(ch_df):,} records → {path}")
+        print(f"  {ch}: {len(ch_df):,} records -> {path}")
 
     # All channels → 1 CSV tổng (để phân tích)
     all_path = f"{config['output_dir']}/txn_all.csv"
@@ -400,7 +405,7 @@ def generate_dataset(config: dict = CONFIG) -> dict[str, pd.DataFrame]:
     print(f"Total transactions : {len(df):,}")
     print(f"Fraud transactions : {df['fraud_label'].sum():,} "
           f"({df['fraud_label'].mean()*100:.2f}%)")
-    print(f"Date range         : {df['timestamp'].min()} → {df['timestamp'].max()}")
+    print(f"Date range         : {df['timestamp'].min()} -> {df['timestamp'].max()}")
     print(f"\nBy channel:")
     for ch, cnt in df['channel'].value_counts().items():
         print(f"  {ch:12s}: {cnt:,} ({cnt/len(df)*100:.1f}%)")
