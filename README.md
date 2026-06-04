@@ -112,7 +112,7 @@ audit_log   (NiFi provenance trail)
 | Fraud detection latency p95 | ~5 seconds | < 5s |
 | PII masking coverage | 100% (0 unmasked) | 100% |
 | Dead-letter error rate | < 0.01% | < 1% |
-| Docker stack RAM | see `docker stats` | < 6 GB |
+| Docker stack RAM | 3.87 GiB total | < 6 GB |
 
 > NiFi is 2.4x slower than raw Python ETL in throughput — expected trade-off.
 > NiFi performs: schema validation + Jolt transform + customer enrichment + 4 fraud rules + dual storage (PostgreSQL + MinIO) + Kafka alert publishing per record.
