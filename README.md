@@ -6,7 +6,7 @@ End-to-end data pipeline simulating a Vietnamese banking system. Ingests transac
 
 ## Architecture
 
-![Architecture Diagram](docs/architecture.svg)
+![Architecture Diagram](docs/architecture.png)
 
 <details>
 <summary>Text version</summary>
@@ -45,26 +45,71 @@ End-to-end data pipeline simulating a Vietnamese banking system. Ingests transac
 
 ## Quick Start
 
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac/Linux)
+- Git
+- Python 3.11+ with `pip install faker pandas numpy kafka-python psycopg2-binary` *(for data generation only)*
+
+### 1. Clone and start
+
 ```bash
-# 1. Clone and start full stack (one command)
 git clone https://github.com/JohnWickCP/banking-nifi-pipeline.git
-cd banking-nifi-pipeline/docker
+cd banking-nifi-pipeline
+
+# Start the full stack — one command, no config needed
 docker compose up -d
+```
 
-# 2. Wait ~3 minutes for all services to be healthy
+### 2. Wait ~3 minutes for all services to be healthy
+
+```bash
 docker compose ps
+# Expected: all containers show "healthy" or "running"
+```
 
-# 3. Access NiFi UI (configure flow)
-# https://localhost:8443/nifi
-# Username: admin  |  Password: Banking@Admin1
+### 3. Access services
 
-# 4. Access Grafana dashboard
-# http://localhost:3000
-# Username: admin  |  Password: admin123
+| Service | URL | Credentials |
+|---|---|---|
+| **NiFi** (flow editor) | https://localhost:8443/nifi | admin / Banking@Admin1 |
+| **Grafana** (dashboard) | http://localhost:3000 | admin / admin123 |
+| **MinIO** (data lake) | http://localhost:9001 | minioadmin / minioadmin123 |
+| **PostgreSQL** | localhost:5432 | banking / banking123 / db: banking_dw |
 
-# 5. Access MinIO Data Lake
-# http://localhost:9001
-# Username: minioadmin  |  Password: minioadmin123
+### 4. Generate transactions and send to pipeline
+
+```bash
+# Generate 10,000 transactions across 4 channels
+python python/generator/data_generator.py
+
+# Send to Kafka → NiFi will process automatically
+python tests/measure_nifi_throughput.py
+```
+
+### 5. Expected results after ~2 minutes
+
+```sql
+-- Connect to PostgreSQL and verify:
+SELECT COUNT(*) FROM fact_txn;                                    -- ~10,000 rows
+SELECT COUNT(*) FROM fact_alert;                                  -- fraud alerts (velocity + duplicate + off-hours)
+SELECT COUNT(*) FROM fact_txn WHERE account_masked NOT LIKE '****%';  -- must be 0 (PII masked)
+SELECT rule_triggered, COUNT(*) FROM fact_alert GROUP BY 1;       -- alerts by rule
+```
+
+- **Grafana** → Dashboard "Banking Pipeline — Real-time Overview" shows live metrics
+- **MinIO** → `http://localhost:9001` → bucket `banking-raw` contains raw JSON files
+- **NiFi** → `https://localhost:8443/nifi` → flow shows green processors with throughput counters
+
+### Replay dead-letter queue
+
+```bash
+python scripts/replay_dead_letter.py   # replays txn.dead-letter → txn.raw
+```
+
+### End-of-day report
+
+```bash
+python scripts/eod_report.py           # prints daily summary from PostgreSQL
 ```
 
 ---

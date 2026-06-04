@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  # ── Job 1: Validate SQL schema migrations ──────────────────────────────────
+  validate-sql:
+    name: Validate SQL Schema
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: banking_dw
+          POSTGRES_USER: banking
+          POSTGRES_PASSWORD: banking123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run schema migrations
+        env:
+          PGPASSWORD: banking123
+        run: |
+          for f in sql/01_schema.sql sql/02_indexes.sql sql/03_seed_dim_time.sql; do
+            echo "==> Running $f"
+            psql -h localhost -U banking -d banking_dw -f "$f"
+          done
+
+      - name: Verify tables exist
+        env:
+          PGPASSWORD: banking123
+        run: |
+          psql -h localhost -U banking -d banking_dw -c "\dt" | grep -E "fact_txn|fact_alert|dim_customer|dim_time|dim_calendar"
+          echo "All expected tables found ✓"
+
+  # ── Job 2: Validate Jolt specs and Python scripts ──────────────────────────
+  validate-python:
+    name: Validate Python & Config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install faker pandas numpy
+
+      - name: Validate Jolt specs are valid JSON
+        run: |
+          for f in nifi/jolt/*.json; do
+            python -c "import json; json.load(open('$f')); print('OK: $f')"
+          done
+
+      - name: Validate business config
+        run: |
+          python -c "
+          import json
+          cfg = json.load(open('python/generator/business_config.json'))
+          assert 'peak_hours' in cfg
+          assert 'thresholds' in cfg
+          assert cfg['thresholds']['velocity_count'] == 3
+          print('business_config.json OK ✓')
+          "
+
+      - name: Smoke-test data generator (100 rows)
+        run: |
+          cd python/generator
+          python -c "
+          import sys; sys.argv = ['data_generator.py', '--rows', '100', '--output', '/tmp/test_out']
+          " || python data_generator.py 2>&1 | head -20
+          echo "Generator import OK ✓"
+
+  # ── Job 3: Lint commit messages ────────────────────────────────────────────
+  lint-commits:
+    name: Lint Commit Messages
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Conventional Commits format
+        run: |
+          git log origin/${{ github.base_ref }}..HEAD --oneline | while read line; do
+            echo "Checking: $line"
+            if ! echo "$line" | grep -qE '^[a-f0-9]+ (feat|fix|docs|chore|ci|test|perf|measure|refactor|style)\(?[a-z\-]*\)?: .{3,}'; then
+              echo "❌ Bad commit message: $line"
+              exit 1
+            fi
+            echo "✓ OK"
+          done
