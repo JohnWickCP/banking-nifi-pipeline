@@ -127,13 +127,18 @@ services:
       SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_USERNAME:-admin}
       # Password must be 12+ chars with upper, lower, digit, special
       SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD:-Banking@Admin1}
+    # Auto-copy Groovy scripts from bind-mount to named volume on each startup.
+    # Fixes Windows Docker Desktop Java IO issue: shell cp works, Java File API doesn't.
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      mkdir -p /opt/nifi/nifi-current/data/scripts &&
+      cp -f /opt/nifi/nifi-current/scripts/*.groovy /opt/nifi/nifi-current/data/scripts/ 2>/dev/null || true &&
+      exec /opt/nifi/scripts/start.sh
     volumes:
       - nifi_state:/opt/nifi/nifi-current/state
       - nifi_data:/opt/nifi/nifi-current/data
       - nifi_logs:/opt/nifi/nifi-current/logs
       - ../nifi/scripts:/opt/nifi/nifi-current/scripts:ro
-      # Uncomment to bind-mount conf (persists flow.xml outside Docker volume):
-      # - ./nifi/conf:/opt/nifi/nifi-current/conf
     depends_on:
       kafka:
         condition: service_healthy
@@ -171,7 +176,9 @@ services:
 
   # ── Grafana 10 ──────────────────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:10.0.0
+    build:
+      context: ..                        # project root — COPY can reach grafana/ folder
+      dockerfile: docker/grafana/Dockerfile
     container_name: banking-grafana
     ports:
       - "${GRAFANA_HOST_PORT:-3000}:3000"
@@ -181,8 +188,6 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ../grafana/provisioning:/etc/grafana/provisioning:ro
-      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       postgres:
         condition: service_healthy
