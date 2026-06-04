@@ -107,7 +107,7 @@ def main():
     print(f"  Kafka produce done: {send_elapsed:.2f}s ({BATCH_SIZE/send_elapsed:.0f} records/s)")
     print()
     print(f"[nifi-throughput] Waiting for {BATCH_SIZE:,} rows to appear in fact_txn...")
-    print(f"  (NiFi processes: validate → Jolt → LookupRecord → fraud checks → PutDatabaseRecord)")
+    print(f"  (NiFi processes: validate -> Jolt -> LookupRecord -> fraud checks -> PutDatabaseRecord)")
     print()
 
     arrived, elapsed = wait_for_postgres(BATCH_SIZE)
@@ -130,7 +130,7 @@ def main():
         print(f"  Note: NiFi does enrichment + 2 fraud rules + MinIO write")
         print(f"  Throughput ratio (baseline/NiFi): {ratio:.1f}x")
     print()
-    print("  → Copy into docs/benchmark.md:")
+    print("  -> Copy into docs/benchmark.md:")
     print(f"    NiFi Pipeline : {elapsed:.2f}s | {arrived:,} rows | {throughput:.0f} rows/s")
 
 
