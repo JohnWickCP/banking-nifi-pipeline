@@ -79,7 +79,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
 def main():
     dist = haversine_km(HANOI_LAT, HANOI_LON, HCMC_LAT, HCMC_LON)
     print(f"[geo-anomaly-test] Run ID: {RUN_ID}")
-    print(f"  Ha Noi → HCMC distance: {dist:.0f} km  (threshold: 300 km)")
+    print(f"  Ha Noi -> HCMC distance: {dist:.0f} km  (threshold: 300 km)")
     print(f"  Account: ****9999 | Window: 30 minutes")
     print()
 
