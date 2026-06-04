@@ -6,6 +6,11 @@ End-to-end data pipeline simulating a Vietnamese banking system. Ingests transac
 
 ## Architecture
 
+![Architecture Diagram](docs/architecture.svg)
+
+<details>
+<summary>Text version</summary>
+
 ```
 [Data Generator]
   ATM / POS / Mobile / Internet ──→ Kafka (txn.raw)
@@ -33,6 +38,8 @@ End-to-end data pipeline simulating a Vietnamese banking system. Ingests transac
    PostgreSQL fact_txn          PostgreSQL fact_alert
    MinIO raw JSON               Kafka txn.alert
 ```
+
+</details>
 
 ---
 
