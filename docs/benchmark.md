@@ -52,7 +52,18 @@
 - All 10,034 records in `fact_txn` use consistent `****XXXX` format
 
 ## Infrastructure
-- Docker stack RAM: measured via `docker stats --no-stream` (see screenshot 08)
+
+| Container | RAM | CPU |
+|---|---|---|
+| banking-nifi | 2.735 GiB | 2.77% |
+| banking-kafka | 763 MiB | 0.54% |
+| banking-zookeeper | 144 MiB | 0.08% |
+| banking-minio | 91 MiB | 0.08% |
+| banking-grafana | 79 MiB | 0.14% |
+| banking-postgres | 57 MiB | 0.00% |
+| **TOTAL** | **~3.87 GiB** | **~3.6%** |
+
+- Docker stack RAM: **3.87 GiB** ✅ (target < 6 GiB)
 - NiFi startup time: ~2 minutes (90s start_period configured)
 - Full stack startup: ~3 minutes (`docker compose up` cold start)
 
