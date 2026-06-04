@@ -131,6 +131,7 @@ services:
       - nifi_state:/opt/nifi/nifi-current/state
       - nifi_data:/opt/nifi/nifi-current/data
       - nifi_logs:/opt/nifi/nifi-current/logs
+      - ../nifi/scripts:/opt/nifi/nifi-current/scripts:ro
       # Uncomment to bind-mount conf (persists flow.xml outside Docker volume):
       # - ./nifi/conf:/opt/nifi/nifi-current/conf
     depends_on:
