@@ -5,7 +5,7 @@ Usage: python tests/continuous_load.py [--hours 2] [--rate 10]
   --rate  : số txn/giây (default 10)
 """
 import json, random, time, argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from kafka import KafkaProducer
 
 BROKER = "localhost:9092"
@@ -24,14 +24,17 @@ CHANNELS = ["ATM", "POS", "mobile", "internet"]
 
 txn_counter = 0
 
+# Each account has a fixed home province — realistic, avoids false geo_anomaly alerts
+ACCOUNT_HOME = {f"****{i:04d}": PROVINCES[i % len(PROVINCES)] for i in range(1000, 10000)}
+
 def make_txn(account=None, amount=None, merchant=None, province=None, fraud_label=0, fraud_type=None):
     global txn_counter
     txn_counter += 1
-    prov = province or random.choice(PROVINCES)
     acct = account or f"****{random.randint(1000,9999):04d}"
+    prov = province or ACCOUNT_HOME.get(acct, random.choice(PROVINCES))
     return {
         "transaction_id":    f"LOAD-{txn_counter:09d}",
-        "timestamp":         datetime.utcnow().isoformat(timespec="seconds"),
+        "timestamp":         datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "account_masked":    acct,
         "customer_id":       f"CUS{random.randint(1,5000):06d}",
         "channel":           random.choice(CHANNELS),
