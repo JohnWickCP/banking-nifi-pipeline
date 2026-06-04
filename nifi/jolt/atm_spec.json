@@ -1,0 +1,23 @@
+[
+  {
+    "operation": "shift",
+    "spec": {
+      "*": {
+        "transaction_id":    "[&1].transaction_id",
+        "timestamp":         "[&1].timestamp",
+        "account_masked":    "[&1].account_masked",
+        "customer_id":       "[&1].customer_id",
+        "channel":           "[&1].channel",
+        "merchant_id":       "[&1].merchant_id",
+        "merchant_province": "[&1].merchant_province",
+        "merchant_lat":      "[&1].merchant_lat",
+        "merchant_lon":      "[&1].merchant_lon",
+        "amount":            "[&1].amount",
+        "currency":          "[&1].currency",
+        "status":            "[&1].status",
+        "fraud_label":       "[&1].fraud_label",
+        "fraud_type":        "[&1].fraud_type"
+      }
+    }
+  }
+]
