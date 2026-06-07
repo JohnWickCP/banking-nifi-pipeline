@@ -1,0 +1,22 @@
+{
+  "peak_hours": [8, 9, 10, 11, 13, 14, 15, 16],
+  "business_hours": {"start": 8, "end": 17},
+  "night_hours": {"start": 22, "end": 6},
+  "maintenance_windows": [
+    {"day_of_week": 6, "start_hour": 1, "end_hour": 3}
+  ],
+  "holidays_2025": [
+    "2025-01-01", "2025-01-29", "2025-01-30",
+    "2025-01-31", "2025-02-01", "2025-02-02",
+    "2025-02-03", "2025-04-07", "2025-04-30",
+    "2025-05-01", "2025-09-02"
+  ],
+  "thresholds": {
+    "off_hours_large_txn_vnd": 50000000,
+    "velocity_count": 3,
+    "velocity_window_seconds": 60,
+    "duplicate_window_seconds": 30,
+    "geo_anomaly_km": 300,
+    "geo_anomaly_minutes": 30
+  }
+}
