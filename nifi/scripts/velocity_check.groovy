@@ -11,8 +11,8 @@ import java.nio.charset.StandardCharsets
 def flowFile = session.get()
 if (!flowFile) return
 
-final long WINDOW_MS = 60_000L   // 60-second velocity window
-final int  THRESHOLD = 3          // >= 3 transactions triggers alert
+final long WINDOW_MS = 60_000L   // 60-second velocity window (sliding)
+final int  THRESHOLD = 3          // >= 3 transactions within the window triggers alert
 
 // Read FlowFile content (JSON array [{...}] from Jolt + LookupRecord)
 def content = ""
@@ -46,25 +46,23 @@ def dmc = context.controllerServiceLookup.getControllerService(serviceId) as Dis
 // Cache key prefixed with "vel:" to avoid collision with Rule 4 (duplicate)
 def cacheKey = "vel:${accountMasked}"
 def now      = System.currentTimeMillis()
-int  newCount = 1
-long newWs    = now
 boolean isFraud = false
 
+// Sliding window: store list of timestamps, prune entries older than WINDOW_MS,
+// then check if size >= THRESHOLD. Catches patterns that straddle window boundaries
+// (e.g. t=0s, t=30s, t=90s where tumbling window would miss the [30s,90s] span).
 try {
     def cached = dmc.get(cacheKey, strSer, strDe)
+    List<Long> timestamps = []
     if (cached) {
-        def e  = new JsonSlurper().parseText(cached)
-        long ws = (e.ws as long) ?: now
-        int  c  = (e.c  as int)  ?: 0
-        if ((now - ws) <= WINDOW_MS) {
-            // Still within the 60-second window — increment counter
-            newCount = c + 1
-            newWs    = ws
-            if (newCount >= THRESHOLD) isFraud = true
-        }
-        // Window expired: reset (newCount=1, newWs=now — already defaulted above)
+        def e = new JsonSlurper().parseText(cached)
+        timestamps = (e.ts as List<Long>) ?: []
     }
-    dmc.put(cacheKey, JsonOutput.toJson([c: newCount, ws: newWs]), strSer, strSer)
+    // Prune timestamps outside the 60-second sliding window
+    timestamps = timestamps.findAll { (now - (it as long)) <= WINDOW_MS }
+    timestamps << now
+    if (timestamps.size() >= THRESHOLD) isFraud = true
+    dmc.put(cacheKey, JsonOutput.toJson([ts: timestamps]), strSer, strSer)
 } catch (Exception ex) {
     // Fail-open: log error but don't block the pipeline
     def sw = new java.io.StringWriter()
