@@ -362,12 +362,14 @@ def main():
     )
 
     # 5. QueryRecord (Rule 3 — off-hours large transaction)
+    # SUBSTRING extracts hour from ISO 8601 "2026-06-07T02:06:29" at position 12-13
+    # because Calcite CAST("timestamp" AS TIMESTAMP) fails on the T-separator format
     rule3_sql = (
         "SELECT * FROM FLOWFILE WHERE "
         "CAST(\"amount\" AS BIGINT) > 50000000 "
         "AND ("
-        "EXTRACT(HOUR FROM CAST(\"timestamp\" AS TIMESTAMP)) >= 22 "
-        "OR EXTRACT(HOUR FROM CAST(\"timestamp\" AS TIMESTAMP)) < 6"
+        "CAST(SUBSTRING(\"timestamp\", 12, 2) AS INTEGER) >= 22 "
+        "OR CAST(SUBSTRING(\"timestamp\", 12, 2) AS INTEGER) < 6"
         ")"
     )
     query = create_proc(root_id, token,
