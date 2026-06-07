@@ -111,7 +111,7 @@ def main():
     print()
     print("  Expected:")
     print(f"    GEOTEST-{RUN_ID}-001 | fraud_flag=false | (clean — first location)")
-    print(f"    GEOTEST-{RUN_ID}-002 | fraud_flag=true  | ALT-G-xxxxxxxx  ← geo anomaly")
+    print(f"    GEOTEST-{RUN_ID}-002 | fraud_flag=true  | ALT-G-xxxxxxxx  <- geo anomaly")
 
 if __name__ == "__main__":
     main()
