@@ -109,12 +109,8 @@ services:
       NIFI_JVM_HEAP_MAX: ${NIFI_JVM_HEAP_MAX:-2g}
       SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_USERNAME:-admin}
       SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD:-Banking@Admin1}
-    # Auto-copy Groovy scripts to named volume on startup (Windows bind-mount workaround)
-    entrypoint: ["/bin/bash", "-c"]
-    command: >
-      mkdir -p /opt/nifi/nifi-current/data/scripts &&
-      cp -f /opt/nifi/nifi-current/scripts/*.groovy /opt/nifi/nifi-current/data/scripts/ 2>/dev/null || true &&
-      exec /opt/nifi/scripts/start.sh
+    # Copy Groovy scripts to writable volume then start NiFi (single-line avoids Windows CRLF issue)
+    entrypoint: ["/bin/bash", "-c", "mkdir -p /opt/nifi/nifi-current/data/scripts && cp -f /opt/nifi/nifi-current/scripts/*.groovy /opt/nifi/nifi-current/data/scripts/ 2>/dev/null; exec /opt/nifi/scripts/start.sh"]
     volumes:
       - nifi_state:/opt/nifi/nifi-current/state
       - nifi_data:/opt/nifi/nifi-current/data
